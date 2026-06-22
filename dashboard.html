@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conference Room Booking</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f5f3;
+  --surface: #ffffff;
+  --border: #e2e1da;
+  --border-md: #c8c7bf;
+  --text: #1a1a18;
+  --text-muted: #6b6a65;
+  --blue: #185FA5;
+  --blue-light: #E6F1FB;
+  --blue-dark: #0C447C;
+  --blue-text: #0C447C;
+  --green-bg: #EAF3DE;
+  --green-text: #3B6D11;
+  --red-bg: #FCEBEB;
+  --red-text: #A32D2D;
+  --amber-bg: #FAEEDA;
+  --amber-text: #854F0B;
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── Topbar ── */
+.topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 1.5rem;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar-brand { font-size: 16px; font-weight: 700; color: var(--blue); }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.user-chip {
+  font-size: 12px; color: var(--text-muted);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 99px; padding: 4px 12px;
+}
+.btn-logout {
+  padding: 6px 14px; font-size: 12px; font-weight: 600;
+  background: var(--red-bg); color: var(--red-text);
+  border: 1px solid #f5c6c6; border-radius: var(--radius);
+  cursor: pointer; transition: background .15s;
+}
+.btn-logout:hover { background: #f9d5d5; }
+
+/* ── Layout ── */
+.container { max-width: 880px; margin: 0 auto; padding: 2rem 1rem; }
+
+.app-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.75rem;
+}
+.app-header h1 { font-size: 22px; font-weight: 600; }
+.app-header .subtitle { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+.date-chip {
+  font-size: 13px; color: var(--text-muted);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 99px; padding: 5px 14px;
+}
+
+/* ── Tabs ── */
+.tabs {
+  display: flex; gap: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 4px;
+  margin-bottom: 1.5rem; width: fit-content;
+}
+.tab {
+  padding: 7px 18px; font-size: 13px; font-weight: 500;
+  border: none; background: none; border-radius: var(--radius);
+  cursor: pointer; color: var(--text-muted); transition: all 0.15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.tab.active { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+.badge {
+  background: var(--blue); color: #fff;
+  font-size: 11px; padding: 1px 7px; border-radius: 99px;
+  display: none;
+}
+
+/* ── Room cards ── */
+.rooms-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px; margin-bottom: 1.5rem;
+}
+.room-card {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1rem;
+  cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+  user-select: none;
+}
+.room-card:hover { border-color: var(--border-md); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.room-card.selected { border: 2px solid var(--blue); background: var(--blue-light); }
+.room-name { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+.room-meta { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; line-height: 1.6; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 600; padding: 3px 10px;
+  border-radius: 99px;
+}
+.status-pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; }
+.s-available { background: var(--green-bg); color: var(--green-text); }
+.s-available::before { background: var(--green-text); }
+.s-booked { background: var(--red-bg); color: var(--red-text); }
+.s-booked::before { background: var(--red-text); }
+.s-soon { background: var(--amber-bg); color: var(--amber-text); }
+.s-soon::before { background: var(--amber-text); }
+
+/* ── Form ── */
+.form-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.5rem;
+}
+.form-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 1.25rem; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
+.form-group label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+.form-group input,
+.form-group select {
+  font-size: 14px; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg); color: var(--text);
+  transition: border-color 0.15s; outline: none;
+}
+.form-group input:focus,
+.form-group select:focus { border-color: var(--blue); background: #fff; }
+.btn-primary {
+  width: 100%; padding: 10px; font-size: 14px; font-weight: 600;
+  background: var(--blue); color: #fff; border: none;
+  border-radius: var(--radius); cursor: pointer; transition: background 0.15s;
+  margin-top: 4px;
+}
+.btn-primary:hover:not(:disabled) { background: var(--blue-dark); }
+.btn-primary:disabled {
+  background: var(--border); color: var(--text-muted); cursor: not-allowed;
+}
+.error-msg {
+  font-size: 12px; color: var(--red-text); background: var(--red-bg);
+  border-radius: var(--radius); padding: 7px 12px; margin-bottom: 10px;
+  display: none;
+}
+.error-msg.show { display: block; }
+
+/* ── My Bookings ── */
+.section-head {
+  font-size: 13px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+.bookings-list { display: flex; flex-direction: column; gap: 8px; }
+.booking-item {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1rem 1.25rem;
+  display: flex; align-items: center; gap: 16px;
+}
+.booking-left {
+  width: 48px; height: 48px; border-radius: var(--radius);
+  background: var(--blue-light); color: var(--blue-text);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0; text-align: center; line-height: 1.3;
+}
+.booking-info { flex: 1; min-width: 0; }
+.booking-title { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.booking-meta { font-size: 12px; color: var(--text-muted); }
+.room-tag {
+  display: inline-block; background: var(--blue-light); color: var(--blue-text);
+  font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 99px; margin-left: 6px;
+}
+.btn-cancel {
+  background: none; border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 12px;
+  font-size: 12px; color: var(--text-muted); cursor: pointer;
+  transition: all 0.15s; white-space: nowrap;
+}
+.btn-cancel:hover { border-color: var(--red-text); color: var(--red-text); background: var(--red-bg); }
+.empty-state {
+  text-align: center; padding: 3rem 1rem;
+  color: var(--text-muted); font-size: 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.empty-icon { font-size: 32px; margin-bottom: 10px; }
+
+/* ── Schedule ── */
+.schedule-controls { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+.schedule-wrap {
+  overflow-x: auto; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+}
+.schedule-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 500px; }
+.schedule-table th,
+.schedule-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.schedule-table th {
+  background: var(--bg); font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);
+}
+.schedule-table td:first-child {
+  color: var(--text-muted); font-size: 11px; white-space: nowrap; font-weight: 500;
+}
+.slot-booked {
+  background: var(--blue-light); color: var(--blue-text);
+  border-radius: 6px; padding: 4px 8px;
+  font-weight: 600; font-size: 11px; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 120px; display: block; margin: 0 auto;
+}
+.slot-free { color: var(--border-md); font-size: 11px; text-align: center; display: block; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  padding: 11px 18px; border-radius: var(--radius);
+  font-size: 13px; font-weight: 500;
+  opacity: 0; transition: opacity 0.2s, transform 0.2s;
+  transform: translateY(8px); pointer-events: none; z-index: 999;
+  max-width: 320px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.toast-success { background: #1a1a18; color: #fff; }
+.toast.toast-error   { background: var(--red-text); color: #fff; }
+
+@media (max-width: 520px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .app-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Topbar ── -->
+<div class="topbar">
+  <div class="topbar-brand">📅 RoomBook</div>
+  <div class="topbar-right">
+    <span class="user-chip" id="user-chip">Loading…</span>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="app-header">
+    <div>
+      <h1>Conference Room Booking</h1>
+      <div class="subtitle">Reserve a room for your next meeting</div>
+    </div>
+    <div class="date-chip" id="date-chip"></div>
+  </div>
+
+  <!-- ── Tabs ── -->
+  <div class="tabs">
+    <button class="tab active" id="tab-btn-book" onclick="switchTab('book')">Book a Room</button>
+    <button class="tab" id="tab-btn-mybookings" onclick="switchTab('mybookings')">
+      My Bookings <span class="badge" id="badge"></span>
+    </button>
+    <button class="tab" id="tab-btn-schedule" onclick="switchTab('schedule')">Room Schedule</button>
+  </div>
+
+  <!-- ══ BOOK TAB ══ -->
+  <div id="tab-book">
+    <div class="rooms-grid" id="rooms-grid"></div>
+
+    <div class="form-card">
+      <h3>Booking details</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="form-group">
+          <label>Meeting title</label>
+          <input type="text" id="f-title" placeholder="e.g. Sprint planning">
+        </div>
+        <div class="form-group">
+          <label>Start time</label>
+          <select id="f-start"></select>
+        </div>
+        <div class="form-group">
+          <label>End time</label>
+          <select id="f-end"></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Your name</label>
+        <input type="text" id="f-name" placeholder="e.g. Riya Sharma">
+      </div>
+      <div class="form-group">
+        <label>Attendees (optional)</label>
+        <input type="number" id="f-attendees" placeholder="e.g. 5" min="1">
+      </div>
+      <div class="error-msg" id="error-msg"></div>
+      <button class="btn-primary" id="book-btn" onclick="bookRoom()">Confirm Booking</button>
+    </div>
+  </div>
+
+  <!-- ══ MY BOOKINGS TAB ══ -->
+  <div id="tab-mybookings" style="display:none">
+    <div class="bookings-list" id="my-list"></div>
+  </div>
+
+  <!-- ══ SCHEDULE TAB ══ -->
+  <div id="tab-schedule" style="display:none">
+    <div class="schedule-controls">
+      <div class="form-group" style="margin:0">
+        <label>Date</label>
+        <input type="date" id="s-date" style="width:auto">
+      </div>
+    </div>
+    <div class="schedule-wrap">
+      <table class="schedule-table" id="schedule-table"></table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// 1. AUTH GUARD
+// ══════════════════════════════════════════════
+const API = 'http://127.0.0.1:5000';
+
+let currentUser = null;
+
+try {
+  const raw = localStorage.getItem('user');
+
+  if (raw) {
+    currentUser = JSON.parse(raw);
+  } else {
+    const email = localStorage.getItem('userEmail');
+    const role  = localStorage.getItem('userRole');
+
+    if (email) {
+      currentUser = {
+        email,
+        role: role || 'user'
+      };
+    }
+  }
+
+} catch(e) {
+  currentUser = null;
+}
+
+if (!currentUser) {
+  window.location.href = 'login.html';
+}
+
+if (currentUser.role === 'admin') {
+  window.location.href = 'admin.html';
+}
+
+document.getElementById('user-chip').textContent =
+  currentUser.email;
+
+// ══════════════════════════════════════════════
+// 2. CONSTANTS
+// ══════════════════════════════════════════════
+const ROOMS = [
+  {
+    id: 1,
+    name: 'Focus',
+    capacity: 2,
+    floor: '1st floor',
+    amenities: 'Quiet zone, Solo work'
+  },
+
+  {
+    id: 2,
+    name: 'Horizon',
+    capacity: 4,
+    floor: '2nd floor',
+    amenities: 'TV, Whiteboard'
+  },
+
+  {
+    id: 3,
+    name: 'Zenith',
+    capacity: 8,
+    floor: '3rd floor',
+    amenities: 'Projector, Video call'
+  },
+
+  {
+    id: 4,
+    name: 'Apex',
+    capacity: 12,
+    floor: '4th floor',
+    amenities: 'Dual screen, Whiteboard'
+  },
+
+  {
+    id: 5,
+    name: 'Summit',
+    capacity: 20,
+    floor: '5th floor',
+    amenities: 'Stage, AV system'
+  },
+
+  {
+    id: 6,
+    name: 'Grand Hall',
+    capacity: 50,
+    floor: 'Ground floor',
+    amenities: 'Projector, Stage, Mic system'
+  },
+
+  {
+    id: 7,
+    name: 'Auditorium',
+    capacity: 100,
+    floor: '1st floor',
+    amenities: 'Large screen, Sound system, Podium'
+  }
+];
+
+const TIME_SLOTS = [];
+
+for (let h = 7; h <= 22; h++) {
+
+  TIME_SLOTS.push(
+    `${String(h).padStart(2,'0')}:00`
+  );
+
+  if (h < 22) {
+    TIME_SLOTS.push(
+      `${String(h).padStart(2,'0')}:30`
+    );
+  }
+}
+
+let bookings = [];
+let selectedRoom = null;
+
+// ══════════════════════════════════════════════
+// 3. UTILITIES
+// ══════════════════════════════════════════════
+function todayStr() {
+  return new Date()
+    .toISOString()
+    .split('T')[0];
+}
+
+function fmt12(t) {
+
+  const [h, m] = t.split(':');
+
+  const hr = +h;
+
+  return `${hr === 0 ? 12 :
+           hr > 12 ? hr - 12 : hr}:${m}
+           ${hr < 12 ? 'AM' : 'PM'}`;
+}
+
+function toMin(t) {
+
+  const [h, m] =
+    t.split(':').map(Number);
+
+  return h * 60 + m;
+}
+
+// ══════════════════════════════════════════════
+// 4. TOAST & ERROR
+// ══════════════════════════════════════════════
+let toastTimer = null;
+
+function showToast(msg, type = 'success') {
+
+  const t = document.getElementById('toast');
+
+  t.textContent = msg;
+
+  t.className =
+    `toast toast-${type} show`;
+
+  clearTimeout(toastTimer);
+
+  toastTimer = setTimeout(() => {
+    t.classList.remove('show');
+  }, 3000);
+}
+
+function showError(msg) {
+
+  const e =
+    document.getElementById('error-msg');
+
+  e.textContent = msg;
+
+  e.classList.add('show');
+
+  setTimeout(() => {
+    e.classList.remove('show');
+  }, 3500);
+}
+
+function clearError() {
+
+  document
+    .getElementById('error-msg')
+    .classList
+    .remove('show');
+}
+
+// ══════════════════════════════════════════════
+// 5. LOAD BOOKINGS
+// ══════════════════════════════════════════════
+async function loadBookings() {
+
+  if (!currentUser?.email) return;
+
+  try {
+
+    const res = await fetch(
+      `${API}/getBookings/${
+        encodeURIComponent(currentUser.email)
+      }`
+    );
+
+    const data = await res.json();
+
+    bookings = Array.isArray(data)
+      ? data
+      : [];
+
+    renderRooms();
+    renderMyBookings();
+    updateBadge();
+
+  } catch(err) {
+
+    console.error(err);
+
+    showToast(
+      'Could not load bookings',
+      'error'
+    );
+  }
+}
+
+// ══════════════════════════════════════════════
+// 6. CONFLICT CHECK
+// ══════════════════════════════════════════════
+function hasConflict(roomId, date, start, end) {
+
+  const s = toMin(start);
+  const e = toMin(end);
+
+  return bookings.some(b => {
+
+    if (
+      Number(b.room) !== Number(roomId) ||
+      b.date !== date
+    ) return false;
+
+    return s < toMin(b.end) &&
+           e > toMin(b.start);
+  });
+}
+
+// ══════════════════════════════════════════════
+// 7. ROOM STATUS
+// ══════════════════════════════════════════════
+function getRoomStatus(roomId, dateStr) {
+
+  const selectedStart =
+    document.getElementById('f-start').value;
+
+  const selectedEnd =
+    document.getElementById('f-end').value;
+
+  if (!selectedStart || !selectedEnd) {
+    return 'available';
+  }
+
+  const s = toMin(selectedStart);
+  const e = toMin(selectedEnd);
+
+  const conflict = bookings.some(b => {
+
+    if (
+      Number(b.room) !== Number(roomId) ||
+      b.date !== dateStr
+    ) return false;
+
+    return s < toMin(b.end) &&
+           e > toMin(b.start);
+  });
+
+  if (conflict)
+    return 'booked';
+
+  return 'available';
+}
+
+// ══════════════════════════════════════════════
+// 8. RENDER ROOMS
+// ══════════════════════════════════════════════
+function renderRooms() {
+
+  const date =
+    document.getElementById('f-date').value
+    || todayStr();
+
+  const grid =
+    document.getElementById('rooms-grid');
+
+  grid.innerHTML = ROOMS.map(r => {
+
+    const st =
+      getRoomStatus(r.id, date);
+
+    const stLabel = {
+      available: 'Available',
+      booked: 'In use'
+    }[st];
+
+    const sel =
+      selectedRoom === r.id
+      ? ' selected'
+      : '';
+
+    return `
+    <div class="room-card${sel}"
+         onclick="selectRoom(${r.id})">
+
+      <div class="room-name">
+        ${r.name}
+      </div>
+
+      <div class="room-meta">
+        Up to ${r.capacity} people
+        • ${r.floor}<br>
+        ${r.amenities}
+      </div>
+
+      <span class="status-pill s-${st}">
+        ${stLabel}
+      </span>
+
+    </div>
+    `;
+  }).join('');
+}
+
+function selectRoom(id) {
+
+  selectedRoom = id;
+
+  renderRooms();
+
+  validateForm();
+
+  clearError();
+}
+
+// ══════════════════════════════════════════════
+// 9. TIME SLOT FILTER
+// ══════════════════════════════════════════════
+function populateTimeSlots() {
+
+  const ss =
+    document.getElementById('f-start');
+
+  const se =
+    document.getElementById('f-end');
+
+  ss.innerHTML = '';
+  se.innerHTML = '';
+
+  const selectedDate =
+    document.getElementById('f-date').value;
+
+  const now = new Date();
+
+  const currentMinutes =
+    now.getHours() * 60 +
+    now.getMinutes();
+
+  TIME_SLOTS.forEach(slot => {
+
+    // hide past slots only today
+    if (
+      selectedDate === todayStr() &&
+      toMin(slot) <= currentMinutes
+    ) {
+      return;
+    }
+
+    ss.innerHTML += `
+      <option value="${slot}">
+        ${fmt12(slot)}
+      </option>
+    `;
+
+    se.innerHTML += `
+      <option value="${slot}">
+        ${fmt12(slot)}
+      </option>
+    `;
+  });
+
+  if (ss.options.length > 0)
+    ss.selectedIndex = 0;
+
+  if (se.options.length > 1)
+    se.selectedIndex = 1;
+}
+
+// ══════════════════════════════════════════════
+// 10. VALIDATION
+// ══════════════════════════════════════════════
+function validateForm() {
+
+  const date =
+    document.getElementById('f-date').value;
+
+  const start =
+    document.getElementById('f-start').value;
+
+  const end =
+    document.getElementById('f-end').value;
+
+  const btn =
+    document.getElementById('book-btn');
+
+  if (
+    !start ||
+    !end ||
+    toMin(end) <= toMin(start)
+  ) {
+    btn.disabled = true;
+    return;
+  }
+
+  if (
+    selectedRoom &&
+    hasConflict(
+      selectedRoom,
+      date,
+      start,
+      end
+    )
+  ) {
+
+    btn.disabled = true;
+
+    showError(
+      'This room is already booked.'
+    );
+
+    return;
+  }
+
+  btn.disabled = false;
+}
+
+// ══════════════════════════════════════════════
+// 11. BOOK ROOM
+// ══════════════════════════════════════════════
+async function bookRoom() {
+
+  const title =
+    document.getElementById('f-title')
+    .value.trim();
+
+  const name =
+    document.getElementById('f-name')
+    .value.trim();
+
+  const date =
+    document.getElementById('f-date')
+    .value;
+
+  const start =
+    document.getElementById('f-start')
+    .value;
+
+  const end =
+    document.getElementById('f-end')
+    .value;
+
+  const attendees =
+    document.getElementById('f-attendees')
+    .value.trim() || '1';
+
+  const btn =
+    document.getElementById('book-btn');
+
+  if (!selectedRoom) {
+    showError('Select a room.');
+    return;
+  }
+
+  if (!title) {
+    showError('Enter meeting title.');
+    return;
+  }
+
+  if (!name) {
+    showError('Enter your name.');
+    return;
+  }
+
+  if (toMin(end) <= toMin(start)) {
+
+    showError(
+      'End time must be after start.'
+    );
+
+    return;
+  }
+
+  // prevent past booking
+  const now = new Date();
+
+  if (date === todayStr()) {
+
+    const currentMinutes =
+      now.getHours() * 60 +
+      now.getMinutes();
+
+    if (toMin(start) <= currentMinutes) {
+
+      showError(
+        'Cannot book past time slot.'
+      );
+
+      return;
+    }
+  }
+
+  const room =
+    ROOMS.find(r => r.id === selectedRoom);
+
+  btn.disabled = true;
+
+  btn.textContent = 'Booking...';
+
+  try {
+
+    const res = await fetch(
+      `${API}/book`,
+      {
+        method: 'POST',
+
+        headers: {
+          'Content-Type':
+            'application/json'
+        },
+
+        body: JSON.stringify({
+
+          room: selectedRoom,
+
+          roomName: room.name,
+
+          title,
+          name,
+          date,
+          start,
+          end,
+          attendees,
+
+          email:
+            currentUser.email
+        })
+      }
+    );
+
+    const data = await res.json();
+
+    if (data.status === 'success') {
+
+      showToast(
+        `Booked in ${room.name}`
+      );
+
+      document.getElementById('f-title').value = '';
+      document.getElementById('f-name').value = '';
+      document.getElementById('f-attendees').value = '';
+
+      selectedRoom = null;
+
+      await loadBookings();
+
+      renderRooms();
+
+    } else {
+
+      showError(
+        data.msg || 'Booking failed'
+      );
+    }
+
+  } catch(err) {
+
+    console.error(err);
+
+    showError(
+      'Server connection failed'
+    );
+  }
+
+  btn.disabled = false;
+
+  btn.textContent =
+    'Confirm Booking';
+}
+
+// ══════════════════════════════════════════════
+// 12. CANCEL BOOKING
+// ══════════════════════════════════════════════
+async function cancelBooking(id) {
+
+  if (!confirm('Cancel booking?'))
+    return;
+
+  try {
+
+    await fetch(
+      `${API}/delete/${id}`,
+      {
+        method: 'DELETE'
+      }
+    );
+
+    showToast('Booking cancelled');
+
+    await loadBookings();
+
+  } catch(err) {
+
+    showToast(
+      'Could not cancel',
+      'error'
+    );
+  }
+}
+
+// ══════════════════════════════════════════════
+// 13. MY BOOKINGS
+// ══════════════════════════════════════════════
+function renderMyBookings() {
+
+  const list =
+    document.getElementById('my-list');
+
+  if (!bookings.length) {
+
+    list.innerHTML = `
+    <div class="empty-state">
+
+      <div class="empty-icon">
+        📭
+      </div>
+
+      <p>
+        No bookings yet
+      </p>
+
+    </div>
+    `;
+
+    return;
+  }
+
+  list.innerHTML = bookings.map(b => {
+
+    const [, mon, day] =
+      b.date.split('-');
+
+    return `
+    <div class="booking-item">
+
+      <div class="booking-left">
+        <div>
+          ${
+            ['Jan','Feb','Mar','Apr',
+             'May','Jun','Jul','Aug',
+             'Sep','Oct','Nov','Dec'][+mon-1]
+          }
+        </div>
+
+        <div style="
+          font-size:17px;
+          font-weight:800
+        ">
+          ${day}
+        </div>
+      </div>
+
+      <div class="booking-info">
+
+        <div class="booking-title">
+          ${b.title}
+
+          <span class="room-tag">
+            ${b.roomName}
+          </span>
+        </div>
+
+        <div class="booking-meta">
+          ${b.name}
+          •
+          ${fmt12(b.start)}
+          -
+          ${fmt12(b.end)}
+        </div>
+
+      </div>
+
+      <button class="btn-cancel"
+              onclick="cancelBooking(${b.id})">
+        Cancel
+      </button>
+
+    </div>
+    `;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+// 14. BADGE
+// ══════════════════════════════════════════════
+function updateBadge() {
+
+  const badge =
+    document.getElementById('badge');
+
+  if (bookings.length) {
+
+    badge.style.display = 'inline';
+
+    badge.textContent =
+      bookings.length;
+
+  } else {
+
+    badge.style.display = 'none';
+  }
+}
+
+// ══════════════════════════════════════════════
+// 15. TABS
+// ══════════════════════════════════════════════
+function switchTab(tab) {
+
+  ['book','mybookings','schedule']
+  .forEach(t => {
+
+    document.getElementById(
+      'tab-' + t
+    ).style.display = 'none';
+
+    document.getElementById(
+      'tab-btn-' + t
+    ).classList.remove('active');
+  });
+
+  document.getElementById(
+    'tab-' + tab
+  ).style.display = 'block';
+
+  document.getElementById(
+    'tab-btn-' + tab
+  ).classList.add('active');
+
+  // render tabs properly
+  if (tab === 'mybookings') {
+    renderMyBookings();
+  }
+
+  if (tab === 'schedule') {
+    renderSchedule();
+  }
+}
+
+// ══════════════════════════════════════════════
+// 16. ROOM SCHEDULE
+// ══════════════════════════════════════════════
+async function renderSchedule() {
+
+  const date =
+    document.getElementById('s-date')?.value
+    || todayStr();
+
+  const table =
+    document.getElementById('schedule-table');
+
+  if (!table) return;
+
+  let allBookings = [];
+
+  try {
+
+    const res = await fetch(
+      `${API}/getAllBookings`
+    );
+
+    const all = await res.json();
+
+    allBookings = all.filter(
+      b => b.date === date
+    );
+
+  } catch(e) {
+
+    allBookings = bookings.filter(
+      b => b.date === date
+    );
+  }
+
+  let html = `
+    <tr>
+      <th>Time</th>
+      ${ROOMS.map(r =>
+        `<th>${r.name}</th>`
+      ).join('')}
+    </tr>
+  `;
+
+  TIME_SLOTS.forEach(slot => {
+
+    html += `
+      <tr>
+        <td>${fmt12(slot)}</td>
+    `;
+
+    ROOMS.forEach(r => {
+
+      const b = allBookings.find(bk =>
+
+        Number(bk.room) === Number(r.id) &&
+
+        toMin(slot) >= toMin(bk.start) &&
+
+        toMin(slot) < toMin(bk.end)
+      );
+
+      html += b
+
+      ? `
+      <td>
+        <span class="slot-booked">
+          booked
+        </span>
+      </td>
+      `
+
+      : `
+      <td>
+        <span class="slot-free">
+          —
+        </span>
+      </td>
+      `;
+    });
+
+    html += `</tr>`;
+  });
+
+  table.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════
+// 17. LOGOUT
+// ══════════════════════════════════════════════
+function logout() {
+
+  localStorage.removeItem('user');
+  localStorage.removeItem('userEmail');
+  localStorage.removeItem('userRole');
+
+  window.location.href = 'login.html';
+}
+
+// ══════════════════════════════════════════════
+// 18. INIT
+// ══════════════════════════════════════════════
+function initUI() {
+
+  document.getElementById(
+    'date-chip'
+  ).textContent =
+    new Date().toLocaleDateString(
+      'en-IN',
+      {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      }
+    );
+
+  const t = todayStr();
+
+  document.getElementById(
+    'f-date'
+  ).value = t;
+
+  document.getElementById(
+    'f-date'
+  ).min = t;
+
+  // schedule date
+  if (document.getElementById('s-date')) {
+    document.getElementById('s-date').value = t;
+  }
+
+  populateTimeSlots();
+
+  // booking date listener
+  document
+    .getElementById('f-date')
+    .addEventListener('change', () => {
+
+      populateTimeSlots();
+
+      renderRooms();
+
+      validateForm();
+    });
+
+  // schedule date listener
+  document
+    .getElementById('s-date')
+    ?.addEventListener(
+      'change',
+      renderSchedule
+    );
+
+  // time listeners
+  ['f-start','f-end']
+  .forEach(id => {
+
+    document
+      .getElementById(id)
+      .addEventListener('change', () => {
+
+        renderRooms();
+
+        validateForm();
+      });
+  });
+}
+
+// ══════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════
+initUI();
+
+loadBookings();
+
+</script>
+</body>
+</html>

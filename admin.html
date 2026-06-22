@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Admin Panel</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{margin:0;font-family:Arial;display:flex;background:#f1f5f9}
+
+/* SIDEBAR */
+.sidebar{
+  width:220px;background:#1e293b;color:white;height:100vh;padding:20px;
+}
+.sidebar h2{margin-bottom:20px}
+.sidebar a{
+  display:block;color:#cbd5e1;text-decoration:none;
+  padding:10px;border-radius:6px;margin-bottom:5px;cursor:pointer;
+}
+.sidebar a:hover{background:#334155}
+
+/* MAIN */
+.main{flex:1;padding:20px}
+.top{display:flex;justify-content:space-between;margin-bottom:20px}
+
+.card-container{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:15px;
+}
+.card{
+  background:white;padding:20px;border-radius:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);text-align:center;
+}
+
+.section{display:none}
+.active{display:block}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;background:white;border-radius:10px}
+th,td{padding:10px;border-bottom:1px solid #ddd}
+
+button{
+  padding:6px 10px;border:none;border-radius:5px;
+  background:#ef4444;color:white;cursor:pointer;
+}
+.add{background:#22c55e}
+.logout{background:#0ea5e9}
+
+input{padding:6px;margin:5px}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2>Admin</h2>
+  <a onclick="show('dashboard')">Dashboard</a>
+  <a onclick="show('booking')">Bookings</a>
+  <a onclick="show('user')">Users</a>
+  <a onclick="show('room')">Rooms</a>
+</div>
+
+<div class="main">
+
+<div class="top">
+  <h2 id="title">Dashboard</h2>
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="section active">
+  <div class="card-container">
+    <div class="card"><h1 id="rooms">0</h1><p>Rooms</p></div>
+    <div class="card"><h1 id="bookings">0</h1><p>Bookings</p></div>
+    <div class="card"><h1 id="today">0</h1><p>Today</p></div>
+    <div class="card"><h1 id="usersCount">0</h1><p>Users</p></div>
+  </div>
+
+  <canvas id="chart" height="100"></canvas>
+</div>
+
+<!-- BOOKINGS -->
+<div id="booking" class="section">
+  <h3>Bookings</h3>
+  <table>
+    <thead>
+      <tr><th>Title</th><th>Room</th><th>User</th><th>Date</th><th>Time</th><th>Action</th></tr>
+    </thead>
+    <tbody id="bookingList"></tbody>
+  </table>
+</div>
+
+<!-- USERS -->
+<div id="user" class="section">
+  <h3>Users</h3>
+  <table>
+    <thead>
+      <tr><th>Email</th><th>Role</th><th>Action</th></tr>
+    </thead>
+    <tbody id="userList"></tbody>
+  </table>
+</div>
+
+<!-- ROOMS -->
+<div id="room" class="section">
+  <h3>Rooms</h3>
+
+  <input id="roomName" placeholder="Room name">
+  <input id="capacity" placeholder="Capacity">
+  <button class="add" onclick="addRoom()">Add Room</button>
+
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Capacity</th><th>Action</th></tr>
+    </thead>
+    <tbody id="roomList"></tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+
+// 🔐 AUTH
+const user = JSON.parse(localStorage.getItem("user"));
+if(!user || user.role !== "admin"){
+  window.location.href="login.html";
+}
+
+// 🔄 SWITCH SECTIONS
+function show(sec){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+  document.getElementById(sec).classList.add("active");
+  document.getElementById("title").innerText = sec.toUpperCase();
+
+  if(sec==="booking") loadBookings();
+  if(sec==="user") loadUsers();
+  if(sec==="room") loadRooms();
+}
+
+// 📊 DASHBOARD
+async function loadDashboard(){
+
+  let b = await fetch("http://127.0.0.1:5000/getAllBookings");
+  let bookings = await b.json();
+
+  let u = await fetch("http://127.0.0.1:5000/getUsers");
+  let users = await u.json();
+
+  let r = await fetch("http://127.0.0.1:5000/getRooms");
+  let rooms = await r.json();
+
+  document.getElementById("bookings").innerText = bookings.length;
+  document.getElementById("rooms").innerText = rooms.length;
+  document.getElementById("usersCount").innerText = users.length;
+
+  let today = new Date().toISOString().split("T")[0];
+  document.getElementById("today").innerText =
+    bookings.filter(x=>x.date===today).length;
+
+  // CHART
+  new Chart(document.getElementById("chart"),{
+    type:"bar",
+    data:{
+      labels:["Rooms","Bookings","Users"],
+      datasets:[{
+        data:[rooms.length, bookings.length, users.length]
+      }]
+    }
+  });
+}
+
+// 📅 BOOKINGS
+async function loadBookings(){
+  let res = await fetch("http://127.0.0.1:5000/getAllBookings");
+  let data = await res.json();
+
+  document.getElementById("bookingList").innerHTML =
+    data.map(b=>`
+    <tr>
+      <td>${b.title}</td>
+      <td>${b.roomName}</td>
+      <td>${b.name}</td>
+      <td>${b.date}</td>
+      <td>${b.start} - ${b.end}</td>
+      <td><button onclick="delBooking(${b.id})">Delete</button></td>
+    </tr>
+  `).join('');
+}
+
+async function delBooking(id){
+  await fetch("http://127.0.0.1:5000/delete/"+id,{method:"DELETE"});
+  loadBookings();
+}
+
+// 👤 USERS
+async function loadUsers(){
+  let res = await fetch("http://127.0.0.1:5000/getUsers");
+  let data = await res.json();
+
+  document.getElementById("userList").innerHTML =
+    data.map(u=>`
+    <tr>
+      <td>${u.email}</td>
+      <td>${u.role}</td>
+      <td>
+        <button onclick="delUser('${u.email}')">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function delUser(email){
+  await fetch("http://127.0.0.1:5000/deleteUser/"+email,{method:"DELETE"});
+  loadUsers();
+}
+
+// 🏢 ROOMS
+async function loadRooms(){
+  let res = await fetch("http://127.0.0.1:5000/getRooms");
+  let data = await res.json();
+
+  document.getElementById("roomList").innerHTML =
+    data.map(r=>`
+    <tr>
+      <td>${r.name}</td>
+      <td>${r.capacity}</td>
+      <td><button onclick="delRoom(${r.id})">Delete</button></td>
+    </tr>
+  `).join('');
+}
+
+async function addRoom(){
+  let name = document.getElementById("roomName").value;
+  let cap = document.getElementById("capacity").value;
+
+  await fetch("http://127.0.0.1:5000/addRoom",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({name,capacity:cap})
+  });
+
+  loadRooms();
+}
+
+async function delRoom(id){
+  await fetch("http://127.0.0.1:5000/deleteRoom/"+id,{method:"DELETE"});
+  loadRooms();
+}
+
+// 🚪 LOGOUT
+function logout(){
+  localStorage.removeItem("user");
+  window.location.href="login.html";
+}
+
+loadDashboard();
+
+</script>
+</body>
+</html>
